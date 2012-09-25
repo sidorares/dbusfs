@@ -1,0 +1,23 @@
+{
+    "name": "dbusfs",
+    "author" : "Andrey Sidorov <sidorares@yandex.com>",
+    "version": "0.0.1",
+    "keywords": ["dbus", "fuse", "filesystem"],
+    "description": "FUSE filesystem exposing DBus objects",
+    "main": "index.js",
+    "maintainers" : [ { "name": "Andrey Sidorov" , "email": "sidoares@yandex.ru" } ],
+    "license" : "MIT",
+    "repository": {
+        "type": "git",
+        "url": "http://github.com/sidorares/dbusfs.git"
+    },
+    "dependencies": {
+        "dbus-native": "0.0.4",
+        "fuse4js-readlink": "0.0.1",
+        "xml2js": "0.1.14"
+    },
+    "engine": {
+        "node" : ">=0.6.0"
+    }
+}
+

@@ -11,9 +11,10 @@
         "type": "git",
         "url": "http://github.com/sidorares/dbusfs.git"
     },
+    "bin" : { "dbusfs" : "./dbusfs.js" },
     "dependencies": {
         "dbus-native": "0.0.4",
-        "fuse4js-readlink": "0.0.1",
+        "fuse4js-readlink": "0.1.0",
         "xml2js": "0.1.14"
     },
     "engine": {

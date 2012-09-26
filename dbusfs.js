@@ -52,13 +52,63 @@ function introspect(destination, path, cb) {
   });
 }
 
-function sendScript(destination, objectPath, iface, methodName)
+function sendScript(destination, objectPath, iface, methodName, args)
 {
     // TODO: build --session/system flag or DBUS_SESSION_BUS_ADDRESS variable depending on dbusfs input dlags
-    var res = '#!/bin/sh\n'
+    var header = '#!/bin/sh\nif [ $1 = \'-v\' ]; then\n    literal=""\n    shift;\nelse\n    literal="=--literal"\nfi\n';
     //res += 'export DBUS_SESSION_BUS_ADDRESS=' + process.env.DBUS_SESSION_BUS_ADDRESS + '\n'; 
-    res += 'dbus-send --system --print-reply --dest=' + destination + ' ' + objectPath + ' ' + iface + '.' + methodName + ' $1 $2 $3 $4\n';
-    return res;
+    res = 'dbus-send --system --print-reply$literal --dest=' + destination + ' ' + objectPath + ' ' + iface + '.' + methodName + ' ';
+ 
+    var types = {
+           s: 'string',
+           n: 'int16',
+           q: 'uint16',
+           u: 'uint32',
+           i: 'int32',
+           t: 'uint64',
+           x: 'int64',
+           d: 'double',
+           y: 'byte',
+           b: 'boolean',
+           o: 'objpath',
+           v: 'variant' // variant is a container, but type is part 
+                        // of an argument and we can use it the same way as simple types
+    };
+
+    var help = 'if [ $1 = \'--help\' ]; then\n';
+   
+    var arg;
+    // + ' $1 $2 $3 $4\n';
+    if (args) {
+
+        // help
+        var i;
+
+        var argnum = 0;
+        for (var i=0; i < args.length; ++i)
+        {
+            help += '    echo "' + args[i].$.name + ' ' + args[i].$.direction + ' ' + args[i].$.type + '"\n';
+            if (args[i].$.direction === 'out')
+                continue;
+            argnum++;
+
+            arg = args[i].$.type;
+            if (arg[0] === 'a') {
+                 if (arg[1] == '{') { // dict
+                     res += 'dict:' + types[arg[2]] + ':' + types[arg[3]] + ':$' + argnum + ' ';
+                     continue;
+                 }
+                 res += 'array:' + types[arg[1]] + ':$' + argnum + ' ';
+                 break;
+            } else {
+                 res += types[arg[0]] + ':$' + argnum + ' ';
+            }
+            //res += '===\n' + JSON.stringify(args[i], null, 4) + '\n===\n';
+        }
+    }
+    help += '    exit 0\nfi\n';
+    res += '\n';
+    return header + help + res;
 }
 
 function expand(node, cb) {
@@ -134,7 +184,7 @@ function expand(node, cb) {
                                });
                             })(node, destination, objectPath, name, m.$.name);
                          } else {
-                           var script = sendScript(destination, objectPath, iface.$.name, m.$.name);
+                           var script = sendScript(destination, objectPath, iface.$.name, m.$.name, m.arg);
                            nodeIface[m.$.name] = {
                               type: 'method',
                               destination: destination,
@@ -152,8 +202,6 @@ function expand(node, cb) {
                      for (var j=0 && iface.property; j < iface.property.length; ++j)
                      {
                          var m = iface.property[j];
-                         console.log("ADDING PROPERTY");
-                         console.log(JSON.stringify(m));
                          nodeIface[m.$.name] = {
                             type: 'property',
                             destination: destination,

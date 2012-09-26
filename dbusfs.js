@@ -233,6 +233,37 @@ function expand(node, cb) {
                      };
                  } 
               }
+
+              var exeReady = false;
+              var mainReady = false;
+              if (path === '/' + destination && typeof(node.children.exe) == 'undefined') {
+                  (function(node) {
+                  bus.getConnectionUnixProcessId(destination, function(err, pid) {
+                      if (!err) {
+                          // TODO handle error
+                          var procPath = '/proc/' + pid + '/exe';
+
+                          require('fs').readlink(procPath, function(err, proc) {
+                              // TODO: handle error
+                              if (!err) {
+                                  node.children.exe = {
+                                      type: 'link',
+                                      attr: { size: 0, mode: 0120755 },
+                                      path: node.path + '/exe',
+                                      target: proc
+                                  };
+                              }
+                              console.log(err, proc);
+                              console.log(node.children.exe);
+                              exeReady = true;
+                              if (exeReady && mainReady)
+                                  cb(0, node);
+                          });
+                      }
+                  });
+                  })(node);
+              } else
+                  exeReady = true;
               
               // shortcut to a usually lengthy /some.service.name/some/service/name/some.service.name path if it exists
               if (path === '/' + destination && typeof(node.children.main) == 'undefined') {
@@ -244,14 +275,19 @@ function expand(node, cb) {
                              type: 'link',
                              attr: { size: 0, mode: 0120755 },
                              path: node.path + '/main',
-                             target: mainIfacePath
+                             target: opts.mountPoint + mainIfacePath
                          };
                      }
-                     cb(0, node);
+                     mainReady = true;
+                     if (exeReady && mainReady)
+                         cb(0, node);
                  });
               }
               else 
-                 return cb(0, node);
+                 mainReady = true;
+              
+              if (exeReady && mainReady)
+                 cb(0, node);
           });
           return;
     default:
@@ -301,10 +337,10 @@ function readlink(path, cb) {
     lookup(path, function(node) {
         if (!node)
            return cb(-2);
-        console.log('READLINK', path, node);
         if (node.target)
-           return cb(0, options.mountPoint + node.target);
+           return cb(0, node.target);
         else
+           console.log(JSON.stringify(node, null, 4));
            throw new Error('link node without a target');
     });
 }

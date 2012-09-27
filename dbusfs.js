@@ -37,6 +37,7 @@ function lookup(path, cb) {
 }
 
 function introspect(destination, path, cb) {
+  console.log("Call to introspect:", destination, path);
   bus.invoke({
     destination:  destination,
     path:         path,
@@ -52,12 +53,23 @@ function introspect(destination, path, cb) {
   });
 }
 
+function monitorScript(destination, objectPath, iface, sigName, args)
+{
+    //console.log([destination, objectPath, iface, sigName, args]);
+    //return [destination, objectPath, iface, sigName, args].toString();
+    var header = '#!/bin/sh\n';
+    var res = 'export DBUS_SESSION_BUS_ADDRESS=' + process.env.DBUS_SESSION_BUS_ADDRESS + '\n'; 
+    var match = '"type=\'signal\',sender=\'' + destination + '\',interface=\'' + iface + '\'\"'
+    res += 'dbus-monitor ' + match + '\n'; // TODO: add object path to match
+    return header + res;
+}
+
 function sendScript(destination, objectPath, iface, methodName, args)
 {
     // TODO: build --session/system flag or DBUS_SESSION_BUS_ADDRESS variable depending on dbusfs input dlags
     var header = '#!/bin/sh\nif [ $1 = \'-v\' ]; then\n    literal=""\n    shift;\nelse\n    literal="=--literal"\nfi\n';
-    //res += 'export DBUS_SESSION_BUS_ADDRESS=' + process.env.DBUS_SESSION_BUS_ADDRESS + '\n'; 
-    res = 'dbus-send --system --print-reply$literal --dest=' + destination + ' ' + objectPath + ' ' + iface + '.' + methodName + ' ';
+    var res = 'export DBUS_SESSION_BUS_ADDRESS=' + process.env.DBUS_SESSION_BUS_ADDRESS + '\n'; 
+    res += 'dbus-send --print-reply$literal --dest=' + destination + ' ' + objectPath + ' ' + iface + '.' + methodName + ' ';
  
     var types = {
            s: 'string',
@@ -113,6 +125,8 @@ function sendScript(destination, objectPath, iface, methodName, args)
 
 function expand(node, cb) {
   
+  console.log("Expanding:", node);
+
   var path = node.path;
   switch(node.type) {
   case 'root':
@@ -169,7 +183,7 @@ function expand(node, cb) {
                                    destination: destination,
                                    path: objectPath,
                                    interface: name,
-                                   member: memberName // TODO: be consistent in member/method names
+                                   member: memberName // TODO: be consistent in member vs method
                                };
                                bus.invoke(msg, function(err, arr) {
                                    for (var i=0; i < arr.length; ++i) {
@@ -177,7 +191,7 @@ function expand(node, cb) {
                                        var localname = pathParts[pathParts.length - 1];
                                        links[localname] = {
                                            type: 'object-link',
-                                           target: '/' + destination + '/' + arr[i],
+                                           target: options.mountPoint + '/' + destination + '/' + arr[i],
                                            attr: { size: 0, mode: 0120755 }
                                        };
                                    }
@@ -199,7 +213,7 @@ function expand(node, cb) {
                          }
                      }
                      if (iface.property)
-                     for (var j=0 && iface.property; j < iface.property.length; ++j)
+                     for (var j=0; j < iface.property.length; ++j)
                      {
                          var m = iface.property[j];
                          nodeIface[m.$.name] = {
@@ -211,12 +225,34 @@ function expand(node, cb) {
                             access: m.$.access,
                             propertyType: m.$.type,
                             path: node.path + '/' + m.$.name,
-                            content: script,
                             attr: null // calculate on getattr!
+                         };
+                     }
+                     if (iface.signal)
+                     for (var j=0; j < iface.signal.length; ++j)
+                     {
+                         var m = iface.signal[j];
+                         var script = monitorScript(destination, objectPath, iface.$.name, m.$.name, m.arg);
+                         nodeIface[m.$.name] = {
+                            type: 'signal',
+                            destination: destination,
+                            objectPath: objectPath,
+                            iface: name,
+                            member: m.$.name,
+                            content: script,
+                            attr: { size: script.length, mode: 0100555 }
                          };
                      }
                  }
               }
+
+
+
+              //
+              // nested object paths
+              // TODO: handle case where not immediate child is returned 
+              // (simplest way - return first element in the path)
+              //
               if (res.node && res.node.node) {
                  var name;
                  var nodes = res.node.node;
@@ -233,6 +269,9 @@ function expand(node, cb) {
                      };
                  } 
               }
+
+              // extra links to main interface and service process
+              // TODO: refactor!!!
 
               var exeReady = false;
               var mainReady = false;
@@ -259,6 +298,10 @@ function expand(node, cb) {
                               if (exeReady && mainReady)
                                   cb(0, node);
                           });
+                      } else {
+                              exeReady = true;
+                              if (exeReady && mainReady)
+                                  cb(0, node);
                       }
                   });
                   })(node);
@@ -275,7 +318,7 @@ function expand(node, cb) {
                              type: 'link',
                              attr: { size: 0, mode: 0120755 },
                              path: node.path + '/main',
-                             target: opts.mountPoint + mainIfacePath
+                             target: options.mountPoint + mainIfacePath
                          };
                      }
                      mainReady = true;
@@ -392,6 +435,7 @@ function read(path, offset, len, buf, fh, cb) {
    switch (node.type) {
    case 'method':
    case 'property':
+   case 'signal':
      console.log('READING VALUE');
      console.log(node);
      file = node.content;
@@ -481,8 +525,8 @@ function rmdir(path, cb) {
 
 function init(cb) {
 
-  bus = dbus.systemBus();
-  //bus = dbus.createClient();
+  //bus = dbus.systemBus();
+  bus = dbus.createClient();
   bus.listNames(function(err, names) {
     root.type = 'root';
     root.path = '/';

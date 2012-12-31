@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 
-var f4js = require('fuse4js');
+var f4js = require('fuse4js-readlink');
 var dbus = require('dbus-native');
 var xml2js = require('xml2js');
 
 var options = {};
 var bus = null;
-var root = {     
+var root = {
 };
 
 function isDir(node) {
@@ -20,11 +20,11 @@ function lookup(path, cb) {
 
   var pathParts = path.split('/');
   var depth = 0;
-  var name = pathParts[++depth]; 
+  var name = pathParts[++depth];
   var node = root.children[name];
   while(node && (depth + 1 < pathParts.length)) {
-      name = pathParts[++depth]; 
-      if (!node.children || !node.attr && isDir(node)) 
+      name = pathParts[++depth];
+      if (!node.children || !node.attr && isDir(node))
       {
          expand(node, function() {
              lookup(path, cb); // TODO: don't start from beginning
@@ -33,7 +33,7 @@ function lookup(path, cb) {
       }
       node = node.children[name];
   }
-  cb(node); 
+  cb(node);
 }
 
 function introspect(destination, path, cb) {
@@ -58,7 +58,7 @@ function monitorScript(destination, objectPath, iface, sigName, args)
     //console.log([destination, objectPath, iface, sigName, args]);
     //return [destination, objectPath, iface, sigName, args].toString();
     var header = '#!/bin/sh\n';
-    var res = 'export DBUS_SESSION_BUS_ADDRESS=' + process.env.DBUS_SESSION_BUS_ADDRESS + '\n'; 
+    var res = 'export DBUS_SESSION_BUS_ADDRESS=' + process.env.DBUS_SESSION_BUS_ADDRESS + '\n';
     var match = '"type=\'signal\',sender=\'' + destination + '\',interface=\'' + iface + '\'\"'
     res += 'dbus-monitor ' + match + '\n'; // TODO: add object path to match
     return header + res;
@@ -68,9 +68,9 @@ function sendScript(destination, objectPath, iface, methodName, args)
 {
     // TODO: build --session/system flag or DBUS_SESSION_BUS_ADDRESS variable depending on dbusfs input dlags
     var header = '#!/bin/sh\nif [ $1 = \'-v\' ]; then\n    literal=""\n    shift;\nelse\n    literal="=--literal"\nfi\n';
-    var res = 'export DBUS_SESSION_BUS_ADDRESS=' + process.env.DBUS_SESSION_BUS_ADDRESS + '\n'; 
+    var res = 'export DBUS_SESSION_BUS_ADDRESS=' + process.env.DBUS_SESSION_BUS_ADDRESS + '\n';
     res += 'dbus-send --print-reply$literal --dest=' + destination + ' ' + objectPath + ' ' + iface + '.' + methodName + ' ';
- 
+
     var types = {
            s: 'string',
            n: 'int16',
@@ -83,12 +83,12 @@ function sendScript(destination, objectPath, iface, methodName, args)
            y: 'byte',
            b: 'boolean',
            o: 'objpath',
-           v: 'variant' // variant is a container, but type is part 
+           v: 'variant' // variant is a container, but type is part
                         // of an argument and we can use it the same way as simple types
     };
 
     var help = 'if [ $1 = \'--help\' ]; then\n';
-   
+
     var arg;
     // + ' $1 $2 $3 $4\n';
     if (args) {
@@ -124,7 +124,7 @@ function sendScript(destination, objectPath, iface, methodName, args)
 }
 
 function expand(node, cb) {
-  
+
   console.log("Expanding:", node);
 
   var path = node.path;
@@ -140,7 +140,7 @@ function expand(node, cb) {
           var objectPath = path.substr(destination.length+1);
           if (objectPath === '')
               objectPath = '/';
-         
+
           introspect(destination, objectPath, function(err, res) {
 
               if (!res)
@@ -250,7 +250,7 @@ function expand(node, cb) {
 
               //
               // nested object paths
-              // TODO: handle case where not immediate child is returned 
+              // TODO: handle case where not immediate child is returned
               // (simplest way - return first element in the path)
               //
               if (res.node && res.node.node) {
@@ -267,7 +267,7 @@ function expand(node, cb) {
                          attr: { size: 4096, mode: 040444 },
                          path: node.path + '/' + name
                      };
-                 } 
+                 }
               }
 
               // extra links to main interface and service process
@@ -307,7 +307,7 @@ function expand(node, cb) {
                   })(node);
               } else
                   exeReady = true;
-              
+
               // shortcut to a usually lengthy /some.service.name/some/service/name/some.service.name path if it exists
               if (path === '/' + destination && typeof(node.children.main) == 'undefined') {
                  var mainObject = destination.replace(/\./g, '/');
@@ -326,16 +326,16 @@ function expand(node, cb) {
                          cb(0, node);
                  });
               }
-              else 
+              else
                  mainReady = true;
-              
+
               if (exeReady && mainReady)
                  cb(0, node);
           });
           return;
     default:
           throw new Error('trying to expand ' + node.type + ' node, this indicates to some logic errors');
-  } 
+  }
 }
 
 function getattr(path, cb) {
@@ -365,9 +365,9 @@ function getattr(path, cb) {
                     mode = 0100444;
                 if (node.access === 'write')
                     mode = 0100222;
-                
+
                 node.attr =  { size: node.content.length, mode: mode }; // TODO: test when read-only
-                return cb(0, node.attr); 
+                return cb(0, node.attr);
             });
         } else {
           return cb(0, node.attr);
@@ -389,7 +389,7 @@ function readlink(path, cb) {
 }
 
 function readdir(path, cb) {
-  lookup(path, function(node) { 
+  lookup(path, function(node) {
      if (!node)
        return cb(-2);
 
@@ -541,7 +541,7 @@ function init(cb) {
 }
 
 function destroy(cb) {
-  console.log("File system stopped");      
+  console.log("File system stopped");
   if (bus && bus.connection && bus.connection.state === 'connected')
      bus.connection.end();
   cb();

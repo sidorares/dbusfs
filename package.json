@@ -1,7 +1,7 @@
 {
     "name": "dbusfs",
     "author" : "Andrey Sidorov <sidorares@yandex.com>",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "keywords": ["dbus", "fuse", "filesystem"],
     "description": "FUSE filesystem exposing DBus objects",
     "main": "index.js",
@@ -15,7 +15,7 @@
     "dependencies": {
         "dbus-native": "0.0.7",
         "fuse4js-readlink": "0.1.0",
-        "xml2js": "0.1.14"
+        "xml2js": "0.2.2"
     },
     "engine": {
         "node" : ">=0.6.0"

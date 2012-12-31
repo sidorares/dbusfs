@@ -13,7 +13,7 @@
     },
     "bin" : { "dbusfs" : "./dbusfs.js" },
     "dependencies": {
-        "dbus-native": "0.0.5",
+        "dbus-native": "0.0.7",
         "fuse4js": "0.1.1",
         "xml2js": "0.1.14"
     },

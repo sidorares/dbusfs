@@ -1,7 +1,7 @@
 {
     "name": "dbusfs",
     "author" : "Andrey Sidorov <sidorares@yandex.com>",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "keywords": ["dbus", "fuse", "filesystem"],
     "description": "FUSE filesystem exposing DBus objects",
     "main": "index.js",

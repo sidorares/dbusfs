@@ -115,3 +115,6 @@ $ cat /tmp/fuse/org.freedesktop.Accounts/main/DaemonVersion
  - map signals ( executable shell sctipt, dbus-monitor with corresponding match string? )  
  - fix dbus crash (reproduceable as `ls -l /tmp/fuse/com.ubuntu.Upstart/com/ubuntu/Upstart/jobs/acpid/_/com.ubuntu.Upstart0_6.Instance/processes`) 
  - tests & travis-ci integration
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/sidorares/dbusfs/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+

@@ -1,6 +1,8 @@
 FUSE userspace dbus filesystem 
 ===
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/sidorares/dbusfs.svg)](https://greenkeeper.io/)
+
 Exposes DBus services, objects, interfaces, methods and properies as filesystem objects. Implemented using [node-dbus](https://github.com/sidorares/node-dbus) [node.js](https://github.com/joyent/node) library and [fuse4js](https://github.com/vmware/fuse4js) [FUSE](http://fuse.sourceforge.net/) node.js bindings. 
 
 ### Installation
